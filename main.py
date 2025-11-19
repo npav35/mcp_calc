@@ -109,4 +109,4 @@ def calculate_delta(S: float, K: float, T: float, r: float, sigma: float, option
         raise ValueError("option_type must be 'call' or 'put'")
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="http", host="127.0.0.1", port=3000)
