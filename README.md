@@ -1,1 +1,1 @@
-# mcp_calc
+# MCP server
