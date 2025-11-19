@@ -1,0 +1,112 @@
+import math
+import yfinance as yf
+from datetime import datetime
+from fastmcp import FastMCP
+
+mcp = FastMCP("My Server")
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
+@mcp.tool()
+def get_option_data(ticker: str, option_type: str, expiration_date: str = None, strike: float = None) -> dict:
+    """
+    Fetch option data for a given ticker.
+    
+    Args:
+        ticker: Stock ticker symbol (e.g., "AAPL")
+        option_type: "call" or "put"
+        expiration_date: Expiration date in "YYYY-MM-DD" format. Defaults to the nearest expiration.
+        strike: Strike price. Defaults to the strike closest to the current price.
+        
+    Returns:
+        Dictionary containing S, K, T, r, sigma, and option_type.
+    """
+    stock = yf.Ticker(ticker)
+    
+    # Get current price
+    try:
+        S = stock.history(period="1d")['Close'].iloc[-1]
+    except IndexError:
+        raise ValueError(f"Could not fetch price for {ticker}")
+
+    # Get expiration dates
+    expirations = stock.options
+    if not expirations:
+        raise ValueError(f"No options found for {ticker}")
+        
+    if not expiration_date:
+        expiration_date = expirations[0]
+    elif expiration_date not in expirations:
+        raise ValueError(f"Expiration {expiration_date} not found. Available: {expirations}")
+
+    # Calculate time to expiration (T)
+    expiry = datetime.strptime(expiration_date, "%Y-%m-%d")
+    today = datetime.now()
+    T = (expiry - today).days / 365.0
+    if T <= 0:
+        T = 0.001 # Avoid division by zero or negative time
+
+    # Get option chain
+    opt = stock.option_chain(expiration_date)
+    chain = opt.calls if option_type.lower() == "call" else opt.puts
+    
+    if chain.empty:
+        raise ValueError(f"No {option_type}s found for {ticker} on {expiration_date}")
+
+    # Find strike
+    if strike is None:
+        # Find strike closest to current price
+        idx = (chain['strike'] - S).abs().idxmin()
+        selected_option = chain.loc[idx]
+    else:
+        # Find strike closest to requested strike
+        idx = (chain['strike'] - strike).abs().idxmin()
+        selected_option = chain.loc[idx]
+        
+    K = selected_option['strike']
+    sigma = selected_option['impliedVolatility']
+    
+    # Risk-free rate (using a placeholder or fetching 13-week treasury bill could be an enhancement, 
+    # but for now we'll use a standard 4.5% or let the user override if we added that param, 
+    # but the tool signature doesn't have it. Let's return a default.)
+    r = 0.045 
+
+    return {
+        "S": S,
+        "K": K,
+        "T": T,
+        "r": r,
+        "sigma": sigma,
+        "option_type": option_type
+    }
+
+@mcp.tool()
+def calculate_delta(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
+    """
+    Calculate the delta of an option using the Black-Scholes model.
+    
+    Args:
+        S: Current price of the underlying asset
+        K: Strike price of the option
+        T: Time to expiration in years
+        r: Risk-free interest rate (decimal, e.g., 0.05 for 5%)
+        sigma: Volatility of the underlying asset (decimal, e.g., 0.2 for 20%)
+        option_type: "call" or "put"
+    """
+    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    
+    # CDF of standard normal distribution
+    cdf_d1 = 0.5 * (1 + math.erf(d1 / math.sqrt(2)))
+    
+    if option_type.lower() == "call":
+        return cdf_d1
+    elif option_type.lower() == "put":
+        return cdf_d1 - 1
+    else:
+        raise ValueError("option_type must be 'call' or 'put'")
+
+if __name__ == "__main__":
+    mcp.run()
