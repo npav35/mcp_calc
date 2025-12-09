@@ -108,5 +108,59 @@ def calculate_delta(S: float, K: float, T: float, r: float, sigma: float, option
     else:
         raise ValueError("option_type must be 'call' or 'put'")
 
+@mcp.tool()
+def calculate_gamma(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
+    """
+    Calculate the gamma of an option using the Black-Scholes model.
+    
+    Args:
+        S: Current price of the underlying asset
+        K: Strike price of the option
+        T: Time to expiration in years
+        r: Risk-free interest rate (decimal, e.g., 0.05 for 5%)
+        sigma: Volatility of the underlying asset (decimal, e.g., 0.2 for 20%)
+        option_type: "call" or "put"
+    """
+    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    
+    # Gamma is the second derivative of the option price with respect to the underlying price
+    gamma = math.exp(-0.5 * d1 ** 2) / (math.sqrt(2 * math.pi) * S * sigma * math.sqrt(T))
+    
+    return gamma
+
+@mcp.tool()
+def calculate_theta(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
+    """
+    Calculate the theta of an option using the Black-Scholes model.
+    
+    Args:
+        S: Current price of the underlying asset
+        K: Strike price of the option
+        T: Time to expiration in years
+        r: Risk-free interest rate (decimal, e.g., 0.05 for 5%)
+        sigma: Volatility of the underlying asset (decimal, e.g., 0.2 for 20%)
+        option_type: "call" or "put"
+    """
+    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    d2 = d1 - sigma * math.sqrt(T)
+    
+    # PDF of standard normal distribution
+    pdf_d1 = (1 / math.sqrt(2 * math.pi)) * math.exp(-0.5 * d1 ** 2)
+    
+    # CDF of standard normal distribution for d2
+    cdf_d2 = 0.5 * (1 + math.erf(d2 / math.sqrt(2)))
+    cdf_neg_d2 = 0.5 * (1 + math.erf(-d2 / math.sqrt(2)))
+    
+    term1 = -(S * sigma * pdf_d1) / (2 * math.sqrt(T))
+    
+    if option_type.lower() == "call":
+        theta = term1 - r * K * math.exp(-r * T) * cdf_d2
+    elif option_type.lower() == "put":
+        theta = term1 + r * K * math.exp(-r * T) * cdf_neg_d2
+    else:
+        raise ValueError("option_type must be 'call' or 'put'")
+        
+    return theta
+
 if __name__ == "__main__":
     mcp.run(transport="http", host="127.0.0.1", port=3000)
