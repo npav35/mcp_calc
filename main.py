@@ -5,10 +5,6 @@ from fastmcp import FastMCP
 
 mcp = FastMCP("My Server")
 
-@mcp.tool()
-def add(a: int, b: int) -> int:
-    """Add two numbers together."""
-    return a + b
 
 @mcp.tool()
 def get_option_data(ticker: str, option_type: str, expiration_date: str = None, strike: float = None) -> dict:
@@ -161,6 +157,71 @@ def calculate_theta(S: float, K: float, T: float, r: float, sigma: float, option
         raise ValueError("option_type must be 'call' or 'put'")
         
     return theta
+
+@mcp.tool()
+def calculate_vega(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
+    """
+    Calculate the vega of an option using the Black-Scholes model.
+    
+    Args:
+        S: Current price of the underlying asset
+        K: Strike price of the option
+        T: Time to expiration in years
+        r: Risk-free interest rate (decimal, e.g., 0.05 for 5%)
+        sigma: Volatility of the underlying asset (decimal, e.g., 0.2 for 20%)
+        option_type: "call" or "put" (Vega is the same for both, but parameter kept for consistency)
+    """
+    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    
+    # PDF of standard normal distribution
+    pdf_d1 = (1 / math.sqrt(2 * math.pi)) * math.exp(-0.5 * d1 ** 2)
+    
+    # Vega calculation: S * sqrt(T) * N'(d1)
+    # This represents the rate of change of the option value with respect to the volatility of the underlying asset.
+    # Note: This returns Vega for a 100% change in volatility (e.g. 0.20 to 1.20). 
+    # To get Vega for a 1% change, divide by 100.
+    vega = S * math.sqrt(T) * pdf_d1
+    
+    # Basic validation for option_type even though it doesn't affect calculation
+    if option_type.lower() not in ["call", "put"]:
+         raise ValueError("option_type must be 'call' or 'put'")
+
+    return vega
+
+@mcp.tool()
+def calculate_rho(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
+    """
+    Calculate the rho of an option using the Black-Scholes model.
+    
+    Args:
+        S: Current price of the underlying asset
+        K: Strike price of the option
+        T: Time to expiration in years
+        r: Risk-free interest rate (decimal, e.g., 0.05 for 5%)
+        sigma: Volatility of the underlying asset (decimal, e.g., 0.2 for 20%)
+        option_type: "call" or "put"
+    """
+    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    d2 = d1 - sigma * math.sqrt(T)
+    
+    # CDF of standard normal distribution for d2
+    cdf_d2 = 0.5 * (1 + math.erf(d2 / math.sqrt(2)))
+    cdf_neg_d2 = 0.5 * (1 + math.erf(-d2 / math.sqrt(2)))
+    
+    # Rho calculation:
+    # Call: K * T * e^(-r*T) * N(d2)
+    # Put: -K * T * e^(-r*T) * N(-d2)
+    # This returns Rho for a 100% change in interest rate (e.g. 0.05 to 1.05).
+    # To get Rho for a 1% change, divide by 100.
+    
+    if option_type.lower() == "call":
+        rho = K * T * math.exp(-r * T) * cdf_d2
+    elif option_type.lower() == "put":
+        rho = -K * T * math.exp(-r * T) * cdf_neg_d2
+    else:
+        raise ValueError("option_type must be 'call' or 'put'")
+
+    return rho
 
 if __name__ == "__main__":
     mcp.run(transport="http", host="127.0.0.1", port=3000)
