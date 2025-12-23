@@ -2,11 +2,13 @@ import math
 import yfinance as yf
 from datetime import datetime
 from fastmcp import FastMCP
+from utils.metrics import time_execution
 
 mcp = FastMCP("My Server")
 
 
 @mcp.tool()
+@time_execution
 def get_option_data(ticker: str, option_type: str, expiration_date: str = None, strike: float = None) -> dict:
     """
     Fetch option data for a given ticker.
@@ -80,6 +82,7 @@ def get_option_data(ticker: str, option_type: str, expiration_date: str = None, 
     }
 
 @mcp.tool()
+@time_execution
 def calculate_delta(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """
     Calculate the delta of an option using the Black-Scholes model.
@@ -105,6 +108,7 @@ def calculate_delta(S: float, K: float, T: float, r: float, sigma: float, option
         raise ValueError("option_type must be 'call' or 'put'")
 
 @mcp.tool()
+@time_execution
 def calculate_gamma(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """
     Calculate the gamma of an option using the Black-Scholes model.
@@ -125,6 +129,7 @@ def calculate_gamma(S: float, K: float, T: float, r: float, sigma: float, option
     return gamma
 
 @mcp.tool()
+@time_execution
 def calculate_theta(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """
     Calculate the theta of an option using the Black-Scholes model.
@@ -159,6 +164,7 @@ def calculate_theta(S: float, K: float, T: float, r: float, sigma: float, option
     return theta
 
 @mcp.tool()
+@time_execution
 def calculate_vega(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """
     Calculate the vega of an option using the Black-Scholes model.
@@ -189,6 +195,7 @@ def calculate_vega(S: float, K: float, T: float, r: float, sigma: float, option_
     return vega
 
 @mcp.tool()
+@time_execution
 def calculate_rho(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """
     Calculate the rho of an option using the Black-Scholes model.
