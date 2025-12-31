@@ -12,27 +12,42 @@ from main import calculate_delta, calculate_gamma, calculate_theta, calculate_ve
 # Suppress metrics logging during benchmark
 logging.getLogger("metrics").setLevel(logging.WARNING)
 
-def benchmark_function(func, runs=1000, *args):
-    """
-    Run a function multiple times and return statistics.
-    """
+async def run_async_benchmark(callable_func, runs, *args):
+    """Inner async runner for benchmarking async functions."""
     times = []
-    
-    # If it's a FastMCP tool, access the underlying function
-    callable_func = getattr(func, 'fn', func)
     
     # Warmup
     for _ in range(10):
-        callable_func(*args)
+        await callable_func(*args)
         
     for _ in range(runs):
         start = time.perf_counter()
-        if asyncio.iscoroutinefunction(callable_func):
-            asyncio.run(callable_func(*args))
-        else:
-            callable_func(*args)
+        await callable_func(*args)
         end = time.perf_counter()
         times.append(end - start)
+    return times
+
+def benchmark_function(func, runs=1000, *args):
+    """
+    Run a function multiple times and return statistics.
+    Handles both sync and async functions.
+    """
+    # If it's a FastMCP tool, access the underlying function
+    callable_func = getattr(func, 'fn', func)
+    
+    if asyncio.iscoroutinefunction(callable_func):
+        times = asyncio.run(run_async_benchmark(callable_func, runs, *args))
+    else:
+        times = []
+        # Warmup
+        for _ in range(10):
+            callable_func(*args)
+            
+        for _ in range(runs):
+            start = time.perf_counter()
+            callable_func(*args)
+            end = time.perf_counter()
+            times.append(end - start)
         
     sorted_times = sorted(times)
     count = len(sorted_times)
