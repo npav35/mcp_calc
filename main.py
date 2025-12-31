@@ -1,3 +1,4 @@
+import asyncio
 import math
 import yfinance as yf
 from datetime import datetime
@@ -9,7 +10,7 @@ mcp = FastMCP("My Server")
 
 @mcp.tool()
 @time_execution
-def get_option_data(ticker: str, option_type: str, expiration_date: str = None, strike: float = None) -> dict:
+async def get_option_data(ticker: str, option_type: str, expiration_date: str = None, strike: float = None) -> dict:
     """
     Fetch option data for a given ticker.
     
@@ -24,14 +25,15 @@ def get_option_data(ticker: str, option_type: str, expiration_date: str = None, 
     """
     stock = yf.Ticker(ticker)
     
-    # Get current price
+    # Get current price (blocking)
     try:
-        S = stock.history(period="1d")['Close'].iloc[-1]
+        hist = await asyncio.to_thread(stock.history, period="1d")
+        S = hist['Close'].iloc[-1]
     except IndexError:
         raise ValueError(f"Could not fetch price for {ticker}")
 
-    # Get expiration dates
-    expirations = stock.options
+    # Get expiration dates (blocking property access)
+    expirations = await asyncio.to_thread(lambda: stock.options)
     if not expirations:
         raise ValueError(f"No options found for {ticker}")
         
@@ -47,8 +49,8 @@ def get_option_data(ticker: str, option_type: str, expiration_date: str = None, 
     if T <= 0:
         T = 0.001 # Avoid division by zero or negative time
 
-    # Get option chain
-    opt = stock.option_chain(expiration_date)
+    # Get option chain (blocking)
+    opt = await asyncio.to_thread(stock.option_chain, expiration_date)
     chain = opt.calls if option_type.lower() == "call" else opt.puts
     
     if chain.empty:
