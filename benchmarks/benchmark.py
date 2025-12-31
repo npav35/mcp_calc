@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import time
 import sys
 import os
@@ -26,7 +27,10 @@ def benchmark_function(func, runs=1000, *args):
         
     for _ in range(runs):
         start = time.perf_counter()
-        callable_func(*args)
+        if asyncio.iscoroutinefunction(callable_func):
+            asyncio.run(callable_func(*args))
+        else:
+            callable_func(*args)
         end = time.perf_counter()
         times.append(end - start)
         
