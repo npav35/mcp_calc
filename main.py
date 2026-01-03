@@ -16,9 +16,7 @@ from utils.data_types import OptionDataRequest, CacheEntry
 from utils.data_engine import (
     option_cache, 
     fetch_live_option_data, 
-    refresh_cache_entry, 
-    CACHE_TTL, 
-    CACHE_SWR
+    CACHE_TTL
 )
 
 mcp = FastMCP("My Server")
@@ -51,16 +49,6 @@ async def process_option_request(req: OptionDataRequest):
             logging.info(f"CACHE HIT (FRESH): {ticker}")
             if not req.future.done():
                 req.future.set_result(entry.data)
-            return
-
-        if age < CACHE_SWR:
-            logging.info(f"CACHE HIT (STALE): {ticker}. Triggering background refresh.")
-            if not req.future.done():
-                req.future.set_result(entry.data)
-            
-            if not entry.is_refreshing:
-                entry.is_refreshing = True
-                asyncio.create_task(refresh_cache_entry(cache_key, req))
             return
             
     # 2. Cache Miss / Too Old
