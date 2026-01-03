@@ -7,7 +7,7 @@ A high-performance Model Context Protocol (MCP) server for fetching option chain
 This server is built to handle high-load scenarios while maintaining ultra-low response times:
 
 *   **Modular Architecture**: Clean separation of concerns between math logic (`utils/greeks.py`), data fetching (`utils/data_engine.py`), and the service layer (`main.py`).
-*   **Stale-While-Revalidate (SWR) Caching**: Eliminates the "jitter" of network I/O. Subsequent requests for the same instrument are served in **micro-seconds**, with background refreshes keeping data fresh without blocking the caller.
+*   **Strict TTL Caching**: Prioritizes data freshness for trading decisions. Valid data is served instantly from memory (TTL: 60s), while expired requests trigger a fresh fetch to ensure zero-stale-data risk.
 *   **Asynchronous Backpressure Pipeline**: Uses a bounded `asyncio.Queue` (depth: 5) to ensure the system remains stable and responsive even under extreme burst traffic.
 *   **Load Shedding**: Implements a "Drop Newest" policy to protect deterministic performance for existing requests when at capacity.
 
@@ -25,7 +25,7 @@ graph TD
         D["Bounded Queue (Backpressure)"]
         
         subgraph Engine ["Core Engine"]
-            E["SWR Cache"]
+            E["Strict TTL Cache"]
             F["Worker Pool"]
             G["Greeks Math (utils)"]
         end
@@ -44,7 +44,7 @@ graph TD
 
 | Metric | Pre-Optimization | Post-Optimization (Cache Hit) | Improvement |
 | :--- | :--- | :--- | :--- |
-| `get_option_data` | **126 ms** | **46 µs** | **~2,700x** |
+| `get_option_data` | **126 ms** | **107 µs** | **~1,100x** |
 | Response Variance | High (Network) | **Ultra-Low (Deterministic)** | **Stable** |
 
 ## Available Tools

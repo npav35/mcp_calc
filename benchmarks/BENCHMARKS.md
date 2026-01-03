@@ -32,21 +32,21 @@ These metrics represent the performance of the MCP tools **before** any async re
 # Post-Optimization Benchmarks
 
 **Date**: 2026-01-03
-**Optimization Level**: (Backpressure + SWR Caching + Modularization)
+**Optimization Level**: (Backpressure + Strict TTL Caching + Modularization)
 
-Following the architectural refactoring and the implementation of the **Stale-While-Revalidate (SWR)** caching layer, the performance characteristics of the system have Improved.
+Following the architectural refactoring and the implementation of the **Strict TTL** caching layer, the performance characteristics of the system have Improved.
 
 ## 1. Updated Data Fetching (Deterministic)
-*Fetching option data with the Stale-While-Revalidate Caching Layer.*
+*Fetching option data with the Strict TTL Caching Layer.*
 
 | Function | P50 (Median) | P95 (Tail) | P99 (Worst Case) |
 | :--- | :--- | :--- | :--- |
-| `get_option_data` (Cache Hit) | **46 µs** | **58 µs** | **58 µs** |
+| `get_option_data` (Cache Hit) | **107 µs** | **136 µs** | **136 µs** |
 
 **Impact of Changes:**
-1. **~2,700x Improvement**: Median latency dropped from **126ms** to **46 microseconds**. 
-2. **Determinism**: By using a memory-backed cache, "jitter" caused by network calls to Yahoo Finance has been eliminated. The response time is now extremely predictable (deterministic).
-3. **Concurrency Resilience**: The implementation of the **Bounded Queue (Backpressure)** ensures that even during a cache miss or a high-load burst, the server protects itself from resource exhaustion, prioritizing stability over processing outdated requests.
+1. **~1,100x Improvement**: Median latency dropped from **126ms** to **107 microseconds**. 
+2. **Determinism & Freshness**: By using a memory-backed cache with a strict TTL, "jitter" is eliminated while ensuring data integrity. The response time is predictable (deterministic).
+3. **Decision Integrity**: Unlike SWR, a strict TTL ensures that no stale data is ever served for a trading decision, aligning with HFT best practices for execution reliability.
 
 ## 2. Updated Greek Calculations
 *Performance remains consistent after modularization into `utils/greeks.py`.*
