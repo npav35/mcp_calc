@@ -12,6 +12,7 @@ from utils.greeks import (
     calculate_vega as bs_vega, 
     calculate_rho as bs_rho
 )
+from utils.analytics import perform_risk_shock
 from utils.data_types import OptionDataRequest, CacheEntry
 from utils.data_engine import (
     option_cache, 
@@ -139,6 +140,24 @@ def calculate_portfolio_greeks(
         "total_delta": float(np.sum(deltas)),
         "total_gamma": float(np.sum(gammas))
     }
+
+@mcp.tool()
+@time_execution
+def calculate_risk_shock(
+    S: list[float], 
+    K: list[float], 
+    T: list[float], 
+    r: list[float], 
+    sigma: list[float], 
+    option_types: list[str],
+    positions: list[float],
+    shock_percent: float
+) -> dict:
+    """
+    Stress-test a portfolio by simulating a market shock.
+    Includes Dollar Greeks and estimated P&L impact.
+    """
+    return perform_risk_shock(S, K, T, r, sigma, option_types, positions, shock_percent)
 
 @mcp.tool()
 @time_execution
