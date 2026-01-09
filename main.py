@@ -103,33 +103,72 @@ async def get_option_data(ticker: str, option_type: str, expiration_date: str = 
 
 @mcp.tool()
 @time_execution
+def calculate_portfolio_greeks(
+    S: list[float], 
+    K: list[float], 
+    T: list[float], 
+    r: list[float], 
+    sigma: list[float], 
+    option_types: list[str]
+) -> dict:
+    """
+    High-speed batch calculation of Greeks for a portfolio of options.
+    Uses NumPy vectorization for maximum throughput.
+    """
+    import numpy as np
+    
+    # Convert inputs to arrays
+    S_arr = np.array(S)
+    K_arr = np.array(K)
+    T_arr = np.array(T)
+    r_arr = np.array(r)
+    sigma_arr = np.array(sigma)
+    
+    deltas = bs_delta(S_arr, K_arr, T_arr, r_arr, sigma_arr, option_types)
+    gammas = bs_gamma(S_arr, K_arr, T_arr, r_arr, sigma_arr, option_types)
+    thetas = bs_theta(S_arr, K_arr, T_arr, r_arr, sigma_arr, option_types)
+    vegas = bs_vega(S_arr, K_arr, T_arr, r_arr, sigma_arr, option_types)
+    rhos = bs_rho(S_arr, K_arr, T_arr, r_arr, sigma_arr, option_types)
+    
+    return {
+        "deltas": deltas.tolist(),
+        "gammas": gammas.tolist(),
+        "thetas": thetas.tolist(),
+        "vegas": vegas.tolist(),
+        "rhos": rhos.tolist(),
+        "total_delta": float(np.sum(deltas)),
+        "total_gamma": float(np.sum(gammas))
+    }
+
+@mcp.tool()
+@time_execution
 def calculate_delta(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """Calculate the delta of an option."""
-    return bs_delta(S, K, T, r, sigma, option_type)
+    return float(bs_delta(S, K, T, r, sigma, option_type))
 
 @mcp.tool()
 @time_execution
 def calculate_gamma(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """Calculate the gamma of an option."""
-    return bs_gamma(S, K, T, r, sigma, option_type)
+    return float(bs_gamma(S, K, T, r, sigma, option_type))
 
 @mcp.tool()
 @time_execution
 def calculate_theta(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """Calculate the theta of an option."""
-    return bs_theta(S, K, T, r, sigma, option_type)
+    return float(bs_theta(S, K, T, r, sigma, option_type))
 
 @mcp.tool()
 @time_execution
 def calculate_vega(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """Calculate the vega of an option."""
-    return bs_vega(S, K, T, r, sigma, option_type)
+    return float(bs_vega(S, K, T, r, sigma, option_type))
 
 @mcp.tool()
 @time_execution
 def calculate_rho(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> float:
     """Calculate the rho of an option."""
-    return bs_rho(S, K, T, r, sigma, option_type)
+    return float(bs_rho(S, K, T, r, sigma, option_type))
 
 if __name__ == "__main__":
     mcp.run(transport="http", host="127.0.0.1", port=3000)
