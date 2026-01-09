@@ -10,6 +10,7 @@ This server is built to handle high-load scenarios while maintaining ultra-low r
 *   **Strict TTL Caching**: Prioritizes data freshness for trading decisions. Valid data is served instantly from memory (TTL: 60s), while expired requests trigger a fresh fetch to ensure zero-stale-data risk.
 *   **Asynchronous Backpressure Pipeline**: Uses a bounded `asyncio.Queue` (depth: 5) to ensure the system remains stable and responsive even under extreme burst traffic.
 *   **Load Shedding**: Implements a "Drop Newest" policy to protect deterministic performance for existing requests when at capacity.
+*   **Risk & Stress Testing**: Advanced `calculate_risk_shock` tool for simulating market crashes/rallies and calculating Gamma-adjusted P&L impact.
 
 ### Architecture Diagram
 
@@ -50,6 +51,8 @@ graph TD
 ## Available Tools
 
 - `get_option_data`: Fetch S, K, T, r, and σ with intelligent defaults.
+- `calculate_portfolio_greeks`: High-speed batch calculation for entire portfolios.
+- `calculate_risk_shock`: Stress-test a portfolio with a market shock (e.g., -2% move).
 - `calculate_delta`: Calculate Option Delta (Δ).
 - `calculate_gamma`: Calculate Option Gamma (Γ).
 - `calculate_theta`: Calculate Option Theta (Θ).
