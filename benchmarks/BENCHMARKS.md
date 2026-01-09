@@ -82,6 +82,13 @@ Following the refactor of the mathematical engine to use **NumPy vectorization**
 
 *\*Note: For a single calculation, the NumPy overhead is slightly higher, but for any production volume (1,000+ entries), vectorization provides a massive advantage.*
 
+## 2. Risk Simulation Latency
+*Simulating a -2% market shock for a 1,000-option portfolio (Base + Shock + P&L).*
+
+| Operation | Latency (1k Portfolio) | Throughput |
+| :--- | :--- | :--- |
+| `calculate_risk_shock` | **0.76 ms** | **~1,300 simulations/sec** |
+
 **Impact of Changes:**
 1. **Parallel Exposure**: The `calculate_portfolio_greeks` tool can now assess risk for an entire 10,000-option book in **less than 0.5 milliseconds**.
 2. **Numerical Rigor**: The engine was verified using **Hypothesis** (property-based testing) to ensure correctness across 100,000+ fuzzed numerical edge cases.
