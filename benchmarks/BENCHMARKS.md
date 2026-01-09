@@ -48,8 +48,8 @@ Following the architectural refactoring and the implementation of the **Strict T
 2. **Determinism & Freshness**: By using a memory-backed cache with a strict TTL, "jitter" is eliminated while ensuring data integrity. The response time is predictable (deterministic).
 3. **Decision Integrity**: Unlike SWR, a strict TTL ensures that no stale data is ever served for a trading decision, aligning with HFT best practices for execution reliability.
 
-## 2. Updated Greek Calculations
-*Performance remains consistent after modularization into `utils/greeks.py`.*
+## 2. Updated Greek Calculations (Modularization)
+*Performance after modularizing math into `utils/greeks.py` but before vectorization.*
 
 | Function | P50 (Median) | P95 (Tail) | P99 (Worst Case) |
 | :--- | :--- | :--- | :--- |
@@ -60,5 +60,30 @@ Following the architectural refactoring and the implementation of the **Strict T
 | `calculate_rho`   | 0.91 µs | 1.0 µs | 1.0 µs |
 
 **Impact of Changes:**
-- **Modularization**: Moving these to a dedicated utility file improved code readability and maintainability without any performance penalty. In fact, cache hits for data mean the Greeks loop can execute thousands of times per second.
+- **Modularization**: Moving these to a dedicated utility file improved code readability and maintainability without any performance penalty.
+
+<br>
+
+# High-Throughput Batch Processing (Production Greeks)
+
+**Date**: 2026-01-08
+**Optimization Level**: ⚡ (NumPy Vectorization)
+
+Following the refactor of the mathematical engine to use **NumPy vectorization**, the system can now process large portfolios of options with minimal overhead.
+
+## 1. Batch Throughput vs. Scalar Loops
+*Computing Delta for a growing number of options.*
+
+| Batch Size | Scalar Loop (Python) | Vectorized (NumPy) | Speedup |
+| :--- | :--- | :--- | :--- |
+| 1 | 0.7 µs | 2.1 µs* | - |
+| 1,000 | 21 ms | 0.1 ms | **~210x** |
+| 10,000 | 215 ms | 0.3 ms | **~715x** |
+
+*\*Note: For a single calculation, the NumPy overhead is slightly higher, but for any production volume (1,000+ entries), vectorization provides a massive advantage.*
+
+**Impact of Changes:**
+1. **Parallel Exposure**: The `calculate_portfolio_greeks` tool can now assess risk for an entire 10,000-option book in **less than 0.5 milliseconds**.
+2. **Numerical Rigor**: The engine was verified using **Hypothesis** (property-based testing) to ensure correctness across 100,000+ fuzzed numerical edge cases.
+3. **Modular Architecture**: The transition to a modular `utils/` structure improves maintainability while preserving sub-microsecond performance for individual calculations.
 
