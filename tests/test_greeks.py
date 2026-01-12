@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 import numpy as np
 from hypothesis import given, strategies as st
@@ -70,3 +74,7 @@ def test_vega_positivity(S, K, T, r, sigma):
     """Vega should always be non-negative (can be 0 due to underflow for deep OTM)."""
     vega = calculate_vega(S, K, T, r, sigma)
     assert vega >= 0
+
+if __name__ == "__main__":
+    # Suppress warnings about module rewriting since we are running as a script
+    sys.exit(pytest.main(["-v", "-W", "ignore::pytest.PytestAssertRewriteWarning", __file__]))
