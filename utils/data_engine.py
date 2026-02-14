@@ -50,3 +50,11 @@ async def fetch_live_option_data(req: OptionDataRequest) -> dict:
         "S": S, "K": K, "T": (datetime.strptime(expiration_date, "%Y-%m-%d") - datetime.now()).days / 365.0,
         "r": 0.045, "sigma": sigma, "option_type": option_type
     }
+
+async def get_available_expirations(ticker: str) -> list[str]:
+    """Fetch all available expiration dates for a ticker."""
+    stock = yf.Ticker(ticker)
+    expirations = await asyncio.to_thread(lambda: stock.options)
+    if not expirations:
+        return []
+    return sorted(list(expirations))
