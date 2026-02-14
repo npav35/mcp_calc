@@ -17,6 +17,7 @@ from utils.data_types import OptionDataRequest, CacheEntry
 from utils.data_engine import (
     option_cache, 
     fetch_live_option_data, 
+    get_available_expirations,
     CACHE_TTL
 )
 
@@ -101,6 +102,11 @@ async def get_option_data(ticker: str, option_type: str, expiration_date: str = 
          raise RuntimeError("System Overloaded: Request queue is full.")
     
     return await fut
+
+@mcp.tool()
+async def list_expirations(ticker: str) -> list[str]:
+    """List available option expiration dates for a ticker."""
+    return await get_available_expirations(ticker)
 
 @mcp.tool()
 @time_execution
