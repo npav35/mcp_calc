@@ -73,10 +73,38 @@ async def fetch_rsi(
     if window <= 0:
         raise ValueError("window must be a positive integer")
 
+    ticker = ticker.strip().upper()
     stock = yf.Ticker(ticker)
-    hist = await asyncio.to_thread(stock.history, period=period, interval=interval)
+
+    fetch_attempts = [
+        lambda: stock.history(period=period, interval=interval),
+        lambda: yf.download(
+            tickers=ticker,
+            period=period,
+            interval=interval,
+            progress=False,
+            threads=False,
+        ),
+        lambda: stock.history(period="1y", interval="1d"),
+    ]
+
+    hist = pd.DataFrame()
+    last_error = None
+    for attempt in fetch_attempts:
+        for _ in range(2):
+            try:
+                hist = await asyncio.to_thread(attempt)
+                if not hist.empty and "Close" in hist:
+                    break
+            except Exception as e:
+                last_error = e
+            await asyncio.sleep(0.25)
+        if not hist.empty and "Close" in hist:
+            break
+
     if hist.empty or "Close" not in hist:
-        raise ValueError(f"Could not fetch price history for {ticker}")
+        details = f" ({last_error})" if last_error else ""
+        raise ValueError(f"Could not fetch price history for {ticker}{details}")
 
     close = hist["Close"].dropna()
     if len(close) < window + 1:
