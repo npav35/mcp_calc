@@ -51,6 +51,7 @@ graph TD
 ## Available Tools
 
 - `get_option_data`: Fetch S, K, T, r, and σ with intelligent defaults.
+- `get_rsi`: Compute RSI for an underlying ticker from yfinance close prices.
 - `calculate_portfolio_greeks`: High-speed batch calculation for entire portfolios.
 - `calculate_risk_shock`: Stress-test a portfolio with a market shock (e.g., -2% move).
 - `calculate_delta`: Calculate Option Delta (Δ).
@@ -71,4 +72,3 @@ graph TD
    ```
 
 For detailed metrics and methodology, see [benchmarks/BENCHMARKS.md](benchmarks/BENCHMARKS.md).
-
