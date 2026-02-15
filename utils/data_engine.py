@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 import yfinance as yf
+import pandas as pd
 from datetime import datetime
 from .data_types import CacheEntry, OptionDataRequest
 
@@ -58,3 +59,58 @@ async def get_available_expirations(ticker: str) -> list[str]:
     if not expirations:
         return []
     return sorted(list(expirations))
+
+async def fetch_rsi(
+    ticker: str,
+    period: str = "6mo",
+    interval: str = "1d",
+    window: int = 14
+) -> dict:
+    """
+    Fetch close prices from yfinance and compute RSI.
+    Uses Wilder's smoothing (RMA) for a standard RSI implementation.
+    """
+    if window <= 0:
+        raise ValueError("window must be a positive integer")
+
+    stock = yf.Ticker(ticker)
+    hist = await asyncio.to_thread(stock.history, period=period, interval=interval)
+    if hist.empty or "Close" not in hist:
+        raise ValueError(f"Could not fetch price history for {ticker}")
+
+    close = hist["Close"].dropna()
+    if len(close) < window + 1:
+        raise ValueError(
+            f"Not enough data to compute RSI for {ticker}. "
+            f"Need at least {window + 1} close values."
+        )
+
+    delta = close.diff()
+    gains = delta.clip(lower=0)
+    losses = -delta.clip(upper=0)
+
+    avg_gain = gains.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+    avg_loss = losses.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+
+    rs = avg_gain / avg_loss.replace(0, pd.NA)
+    rsi = 100 - (100 / (1 + rs))
+    rsi = rsi.fillna(100)
+
+    latest_rsi = float(rsi.iloc[-1])
+    latest_close = float(close.iloc[-1])
+    latest_ts = close.index[-1]
+
+    return {
+        "ticker": ticker.upper(),
+        "rsi": latest_rsi,
+        "window": window,
+        "period": period,
+        "interval": interval,
+        "latest_close": latest_close,
+        "as_of": latest_ts.isoformat() if hasattr(latest_ts, "isoformat") else str(latest_ts),
+        "signal": (
+            "overbought" if latest_rsi >= 70
+            else "oversold" if latest_rsi <= 30
+            else "neutral"
+        ),
+    }
