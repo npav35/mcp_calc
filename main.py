@@ -18,6 +18,7 @@ from utils.data_engine import (
     option_cache, 
     fetch_live_option_data, 
     get_available_expirations,
+    fetch_rsi,
     CACHE_TTL
 )
 
@@ -107,6 +108,17 @@ async def get_option_data(ticker: str, option_type: str, expiration_date: str = 
 async def list_expirations(ticker: str) -> list[str]:
     """List available option expiration dates for a ticker."""
     return await get_available_expirations(ticker)
+
+@mcp.tool()
+@time_execution
+async def get_rsi(
+    ticker: str,
+    period: str = "6mo",
+    interval: str = "1d",
+    window: int = 14
+) -> dict:
+    """Calculate RSI for the underlying ticker using yfinance close prices."""
+    return await fetch_rsi(ticker=ticker, period=period, interval=interval, window=window)
 
 @mcp.tool()
 @time_execution
