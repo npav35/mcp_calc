@@ -70,6 +70,27 @@ async def fetch_rsi(
     Fetch close prices from yfinance and compute RSI.
     Uses Wilder's smoothing (RMA) for a standard RSI implementation.
     """
+    valid_periods = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"}
+
+    # Handle common LLM tool-call mistake: numeric period intended as RSI window.
+    if isinstance(period, int) or (isinstance(period, str) and period.strip().isdigit()):
+        window = int(period)
+        period = "6mo"
+    else:
+        period = str(period).strip()
+        if period not in valid_periods:
+            logging.warning(
+                "Invalid RSI period '%s' for %s. Falling back to '6mo'.",
+                period,
+                ticker,
+            )
+            period = "6mo"
+
+    if isinstance(window, str):
+        if not window.strip().isdigit():
+            raise ValueError("window must be a positive integer")
+        window = int(window)
+
     if window <= 0:
         raise ValueError("window must be a positive integer")
 
@@ -82,6 +103,7 @@ async def fetch_rsi(
             tickers=ticker,
             period=period,
             interval=interval,
+            auto_adjust=False,
             progress=False,
             threads=False,
         ),
