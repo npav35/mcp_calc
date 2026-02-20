@@ -164,3 +164,92 @@ async def fetch_rsi(
             else "neutral"
         ),
     }
+
+async def fetch_ema(
+    ticker: str,
+    period: str = "6mo",
+    interval: str = "1d",
+    window: int = 20
+) -> dict:
+    """Fetch close prices from yfinance and compute Exponential Moving Average."""
+    valid_periods = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"}
+
+    # Handle common LLM tool-call mistake: numeric period intended as EMA window.
+    if isinstance(period, int) or (isinstance(period, str) and period.strip().isdigit()):
+        window = int(period)
+        period = "6mo"
+    else:
+        period = str(period).strip()
+        if period not in valid_periods:
+            logging.warning(
+                "Invalid EMA period '%s' for %s. Falling back to '6mo'.",
+                period,
+                ticker,
+            )
+            period = "6mo"
+
+    if isinstance(window, str):
+        if not window.strip().isdigit():
+            raise ValueError("window must be a positive integer")
+        window = int(window)
+
+    if window <= 0:
+        raise ValueError("window must be a positive integer")
+
+    ticker = ticker.strip().upper()
+    stock = yf.Ticker(ticker)
+
+    fetch_attempts = [
+        lambda: stock.history(period=period, interval=interval),
+        lambda: yf.download(
+            tickers=ticker,
+            period=period,
+            interval=interval,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        ),
+        lambda: stock.history(period="1y", interval="1d"),
+    ]
+
+    hist = pd.DataFrame()
+    last_error = None
+    for attempt in fetch_attempts:
+        for _ in range(2):
+            try:
+                hist = await asyncio.to_thread(attempt)
+                if not hist.empty and "Close" in hist:
+                    break
+            except Exception as e:
+                last_error = e
+            await asyncio.sleep(0.25)
+        if not hist.empty and "Close" in hist:
+            break
+
+    if hist.empty or "Close" not in hist:
+        details = f" ({last_error})" if last_error else ""
+        raise ValueError(f"Could not fetch price history for {ticker}{details}")
+
+    close = hist["Close"].dropna()
+    if len(close) < window:
+        raise ValueError(
+            f"Not enough data to compute EMA for {ticker}. "
+            f"Need at least {window} close values."
+        )
+
+    ema = close.ewm(span=window, adjust=False, min_periods=window).mean()
+
+    latest_ema = float(ema.iloc[-1])
+    latest_close = float(close.iloc[-1])
+    latest_ts = close.index[-1]
+
+    return {
+        "ticker": ticker.upper(),
+        "ema": latest_ema,
+        "window": window,
+        "period": period,
+        "interval": interval,
+        "latest_close": latest_close,
+        "as_of": latest_ts.isoformat() if hasattr(latest_ts, "isoformat") else str(latest_ts),
+        "signal": "price_above_ema" if latest_close >= latest_ema else "price_below_ema",
+    }
