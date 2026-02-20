@@ -19,6 +19,7 @@ from utils.data_engine import (
     fetch_live_option_data, 
     get_available_expirations,
     fetch_rsi,
+    fetch_ema,
     CACHE_TTL
 )
 
@@ -119,6 +120,17 @@ async def get_rsi(
 ) -> dict:
     """Calculate RSI for the underlying ticker using yfinance close prices."""
     return await fetch_rsi(ticker=ticker, period=period, interval=interval, window=window)
+
+@mcp.tool()
+@time_execution
+async def get_ema(
+    ticker: str,
+    period: str = "6mo",
+    interval: str = "1d",
+    window: int = 20
+) -> dict:
+    """Calculate EMA for the underlying ticker using yfinance close prices."""
+    return await fetch_ema(ticker=ticker, period=period, interval=interval, window=window)
 
 @mcp.tool()
 @time_execution
